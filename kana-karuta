@@ -1,0 +1,362 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Kana Karuta Challenge</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;700&family=Noto+Sans+JP:wght@700&display=swap" rel="stylesheet">
+    <style>
+        /* Custom styles for the game board */
+        .game-font {
+            font-family: 'Noto Sans JP', 'Inter', sans-serif;
+        }
+
+        /* New dynamic board container */
+        #karutaBoard {
+            position: relative;
+            height: 70vh; /* Increased height for more spread */
+            min-height: 450px;
+            width: 100%;
+            margin: 0 auto;
+            overflow: hidden; /* Keep bubbles inside */
+        }
+
+        /* --- TILE BASE STYLES: Bubble Look --- */
+        .kana-tile {
+            /* Key changes for dynamic positioning */
+            position: absolute;
+            width: 96px; /* Increased size for better visibility */
+            height: 96px; /* Increased size for better visibility */
+            font-size: 3rem; /* Adjusted font size */
+            
+            /* Circular Shape and Bubble Aesthetics */
+            border-radius: 50%;
+            display: flex; 
+            align-items: center;
+            justify-content: center;
+            box-shadow: 0 5px 15px rgba(0, 0, 0, 0.15), 
+                        inset 0 0 10px rgba(255, 255, 255, 0.7); 
+            background: linear-gradient(145deg, #fefefe, #f0f0f0);
+            border: 1px solid #d1d5db; 
+            transition: all 0.3s cubic-bezier(0.25, 0.8, 0.25, 1);
+        }
+
+        /* --- TILE INTERACTION STYLES --- */
+        .tile-active {
+            cursor: pointer;
+            user-select: none;
+        }
+        .tile-active:hover {
+            /* Lift and scale slightly on hover */
+            transform: translateY(-8px) scale(1.1); /* Slightly more aggressive hover */
+            box-shadow: 0 15px 25px rgba(0, 0, 0, 0.3), inset 0 0 15px rgba(255, 255, 255, 0.9);
+        }
+        .tile-active:active {
+            /* Push down on click */
+            transform: translateY(0px) scale(0.95);
+            box-shadow: 0 4px 10px rgba(0, 0, 0, 0.1);
+        }
+
+        /* --- FEEDBACK STYLES --- */
+        .tile-correct {
+            animation: bounce 0.5s;
+            background-color: #d1fae5; 
+            color: #065f46; 
+        }
+        .tile-incorrect {
+            animation: shake 0.5s;
+        }
+
+        /* Keyframe animations */
+        @keyframes bounce {
+            0%, 20%, 50%, 80%, 100% { transform: translateY(0); }
+            40% { transform: translateY(-10px); }
+            60% { transform: translateY(-5px); }
+        }
+        @keyframes shake {
+            0%, 100% { transform: translateX(0); }
+            10%, 30%, 50%, 70%, 90% { transform: translateX(-5px); }
+            20%, 40%, 60%, 80% { transform: translateX(5px); }
+        }
+
+        /* New animation for complex, random-like floating ("bumping") */
+        @keyframes bubble-move {
+            0% { transform: translate(0px, 0px); }
+            20% { transform: translate(15px, -15px); }
+            40% { transform: translate(-10px, 20px); }
+            60% { transform: translate(20px, 5px); }
+            80% { transform: translate(-5px, -15px); }
+            100% { transform: translate(0px, 0px); }
+        }
+        .tile-floating {
+            animation-name: bubble-move;
+            animation-timing-function: ease-in-out;
+            animation-iteration-count: infinite; 
+            /* Duration and Delay are set in JavaScript for randomization */
+        }
+    </style>
+</head>
+<body class="bg-gray-50 min-h-screen p-4 flex items-start justify-center">
+
+    <div id="app" class="w-full max-w-4xl bg-white p-6 md:p-10 rounded-xl shadow-2xl border border-gray-100">
+        <!-- Game Title and Score -->
+        <header class="text-center mb-8">
+            <h1 class="text-4xl md:text-5xl font-extrabold text-indigo-700 game-font">
+                Kana Karuta Challenge
+            </h1>
+            <p class="mt-2 text-xl text-gray-600">Click the character the Announcer calls out!</p>
+            <div id="scoreDisplay" class="mt-4 text-2xl font-bold text-gray-800">Score: 0</div>
+        </header>
+
+        <!-- TEACHER PROMPT: Tells the teacher which character to say -->
+        <div id="teacherPromptContainer" class="mb-6 p-4 bg-red-100 rounded-xl border-2 border-red-300 shadow-md text-center">
+            <h2 class="text-lg font-bold text-red-800 uppercase tracking-wider">TEACHER PROMPT: SAY THIS ALOUD</h2>
+            <div id="teacherPrompt" class="game-font text-6xl md:text-7xl font-black text-red-900 mt-1">
+                ?
+            </div>
+            <p class="text-sm text-red-600 mt-1">Do not let the students see this part!</p>
+        </div>
+
+
+        <!-- STUDENT VIEW: Main Game Prompt Area -->
+        <div class="mb-8 p-6 bg-indigo-50 rounded-lg border-4 border-indigo-200 shadow-inner text-center">
+            <h2 id="studentPromptHeader" class="text-xl font-semibold text-indigo-800">The Announcer Calls...</h2>
+            <div id="studentListeningIndicator" class="game-font text-8xl md:text-9xl font-black text-indigo-900 mt-2">
+                🎧
+            </div>
+            <div id="feedbackMessage" class="h-6 mt-2 font-medium"></div>
+        </div>
+
+        <!-- Character Grid (Now a dynamic floating area) -->
+        <div id="karutaBoard">
+            <!-- Tiles will be injected here by JavaScript -->
+        </div>
+
+        <!-- Controls and Game Over Message -->
+        <div class="mt-10 text-center">
+            <button id="restartButton" class="px-8 py-3 bg-green-500 text-white font-bold rounded-full shadow-lg hover:bg-green-600 transition duration-150 transform hover:scale-105" onclick="setupGame()">
+                Start New Game
+            </button>
+            <div id="gameOverMessage" class="game-font text-3xl font-bold text-red-600 mt-4 hidden">
+                GAME OVER! Excellent Work!
+            </div>
+        </div>
+
+        <!-- Game Mode Toggle (Future Expansion) -->
+        <div class="mt-8 pt-4 border-t text-center text-sm text-gray-500">
+            <p>Currently playing: Hiragana (First 25 Characters)</p>
+        </div>
+
+    </div>
+
+    <script>
+        // --- GAME DATA ---
+        // Basic Hiragana characters (first 5 rows: A, I, U, E, O and KA, KI, KU, KE, KO ... SA, TA, NA, HA)
+        const kanaSet = [
+            'あ', 'い', 'う', 'え', 'お',
+            'か', 'き', 'く', 'け', 'こ',
+            'さ', 'し', 'す', 'せ', 'そ',
+            'た', 'ち', 'つ', 'て', 'と',
+            'な', 'に', 'ぬ', 'ね', 'の'
+        ];
+
+        // --- GAME STATE ---
+        let currentScore = 0;
+        let targetCharacter = null;
+        let availableCharacters = [];
+        let gameActive = false;
+        
+        // --- DOM Elements ---
+        const board = document.getElementById('karutaBoard');
+        const teacherPromptDisplay = document.getElementById('teacherPrompt'); 
+        const studentListeningIndicator = document.getElementById('studentListeningIndicator');
+        const scoreDisplay = document.getElementById('scoreDisplay');
+        const feedbackMessage = document.getElementById('feedbackMessage');
+        const restartButton = document.getElementById('restartButton');
+        const gameOverMessage = document.getElementById('gameOverMessage');
+
+        // --- HELPER FUNCTIONS ---
+
+        /**
+         * Shuffles an array in place (Fisher-Yates algorithm).
+         * @param {Array} array The array to shuffle.
+         */
+        function shuffleArray(array) {
+            for (let i = array.length - 1; i > 0; i--) {
+                const j = Math.floor(Math.random() * (i + 1));
+                [array[i], array[j]] = [array[j], array[i]];
+            }
+        }
+
+        /**
+         * Picks a new target character from the currently available characters
+         * and updates the announcer display for the teacher.
+         */
+        function startRound() {
+            if (availableCharacters.length === 0) {
+                endGame();
+                return;
+            }
+
+            // Pick a random character from the remaining available set
+            const randomIndex = Math.floor(Math.random() * availableCharacters.length);
+            targetCharacter = availableCharacters[randomIndex];
+
+            // Update the display for the TEACHER (the user)
+            teacherPromptDisplay.textContent = targetCharacter;
+
+            // Update the display for the STUDENTS
+            studentListeningIndicator.textContent = '📣'; 
+            feedbackMessage.textContent = 'Listen closely! Find the character I just called.';
+            feedbackMessage.className = 'h-6 mt-2 font-medium text-indigo-700';
+
+            // Ensure the board is ready for clicks
+            board.querySelectorAll('.tile-active').forEach(tile => {
+                tile.classList.remove('tile-incorrect');
+            });
+        }
+
+        /**
+         * Handles the player clicking a character tile.
+         * @param {string} clickedChar The character on the clicked tile.
+         * @param {HTMLElement} tileElement The HTML element that was clicked.
+         */
+        function handleTileClick(clickedChar, tileElement) {
+            if (!gameActive || !targetCharacter) return;
+
+            if (clickedChar === targetCharacter) {
+                // CORRECT CLICK!
+                currentScore++;
+                scoreDisplay.textContent = `Score: ${currentScore}`;
+                feedbackMessage.textContent = 'Correct!';
+                feedbackMessage.className = 'h-6 mt-2 font-medium text-green-600';
+                studentListeningIndicator.textContent = '✅'; 
+
+                // Mark the tile as found and remove its floating animation/click handler
+                tileElement.classList.remove('tile-active', 'tile-floating');
+                tileElement.classList.add('tile-correct', 'opacity-50');
+                tileElement.onclick = null; 
+                
+                // Clear inline styles that managed the floating, which allows the 'bounce' animation to reset the transform
+                tileElement.style.top = '';
+                tileElement.style.left = '';
+                tileElement.style.animationDuration = '';
+                tileElement.style.animationDelay = '';
+
+
+                // Remove the character from the available pool
+                availableCharacters = availableCharacters.filter(char => char !== targetCharacter);
+                targetCharacter = null; 
+
+                // Wait a moment then start the next round
+                setTimeout(startRound, 1000);
+
+            } else {
+                // INCORRECT CLICK!
+                feedbackMessage.textContent = 'Incorrect! Try again.';
+                feedbackMessage.className = 'h-6 mt-2 font-medium text-red-600';
+                studentListeningIndicator.textContent = '❌'; 
+                
+                // Visual feedback for incorrect click
+                tileElement.classList.add('tile-incorrect');
+                setTimeout(() => {
+                    tileElement.classList.remove('tile-incorrect');
+                    studentListeningIndicator.textContent = '📣'; 
+                }, 500);
+            }
+        }
+
+        /**
+         * Renders the initial game board with all character tiles, randomly positioned and animated.
+         */
+        function renderBoard(characters) {
+            board.innerHTML = '';
+            
+            // Wait for the board to render and get its dimensions
+            setTimeout(() => {
+                const boardRect = board.getBoundingClientRect();
+                const boardWidth = boardRect.width || 600; 
+                const boardHeight = boardRect.height || 450; 
+                const tileSize = 96; // Matches CSS width/height
+
+                characters.forEach(char => {
+                    const tile = document.createElement('div');
+                    
+                    // Calculate random safe position
+                    // Ensure the bubble starts entirely within the viewable area (board dimension - tile size)
+                    const randomTop = Math.random() * (boardHeight - tileSize);
+                    const randomLeft = Math.random() * (boardWidth - tileSize);
+                    
+                    // Randomize animation properties for asynchronous movement
+                    const randomDuration = (Math.random() * 6) + 7; // 7s to 13s
+                    const randomDelay = Math.random() * 3; // 0s to 3s delay
+
+                    // Apply styles and classes
+                    tile.className = 'kana-tile tile-active tile-floating p-4 game-font font-bold text-gray-800';
+                    tile.textContent = char;
+                    tile.onclick = () => handleTileClick(char, tile);
+                    
+                    // Apply absolute positioning and random animation properties
+                    tile.style.top = `${randomTop}px`;
+                    tile.style.left = `${randomLeft}px`;
+                    tile.style.animationDuration = `${randomDuration}s`;
+                    // Use negative delay to start the animation mid-cycle for a non-uniform look
+                    tile.style.animationDelay = `-${randomDelay}s`; 
+                    
+                    board.appendChild(tile);
+                });
+            }, 100); // Small delay to ensure the board dimensions are calculated correctly
+        }
+
+        /**
+         * Initializes or restarts the game state.
+         */
+        function setupGame() {
+            // Reset state
+            currentScore = 0;
+            availableCharacters = [...kanaSet]; 
+            gameActive = true;
+            targetCharacter = null;
+
+            // Update UI elements
+            scoreDisplay.textContent = `Score: ${currentScore}`;
+            gameOverMessage.classList.add('hidden');
+            
+            // Initial prompt displays
+            studentListeningIndicator.textContent = '🎧';
+            teacherPromptDisplay.textContent = 'Press Start Round!';
+            feedbackMessage.textContent = 'Press the button below to start the first round.';
+
+            // Shuffle and render the board
+            shuffleArray(availableCharacters);
+            renderBoard(availableCharacters);
+            
+            // Change the button function
+            restartButton.textContent = 'Start Round';
+            restartButton.onclick = startRound;
+        }
+
+        /**
+         * Ends the game and displays the final score.
+         */
+        function endGame() {
+            gameActive = false;
+            studentListeningIndicator.textContent = '🏆';
+            teacherPromptDisplay.textContent = 'Game Over!';
+            feedbackMessage.textContent = `You found all ${kanaSet.length} characters!`;
+            gameOverMessage.classList.remove('hidden');
+            
+            // Change the button back to restart the whole game
+            restartButton.textContent = 'Play Again?';
+            restartButton.onclick = setupGame;
+
+            // Disable remaining tiles
+            board.querySelectorAll('div').forEach(tile => tile.onclick = null);
+        }
+
+        // --- INITIALIZATION ---
+        window.onload = setupGame;
+    </script>
+</body>
+</html>
