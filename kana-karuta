@@ -3,44 +3,107 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Kana Karuta Challenge</title>
+    <title>Kana Karuta Master</title>
     <script src="https://cdn.tailwindcss.com"></script>
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;700&family=Noto+Sans+JP:wght@700&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;700&family=Noto+Sans+JP:wght=700&display=swap" rel="stylesheet">
     <style>
         /* Custom styles for the game board */
         .game-font {
             font-family: 'Noto Sans JP', 'Inter', sans-serif;
         }
 
-        /* New dynamic board container */
+        /* Responsive Grid Container */
         #karutaBoard {
-            position: relative;
-            height: 70vh; /* Increased height for more spread */
-            min-height: 450px;
+            display: grid;
+            /* Responsive grid: 3 columns on small screens, 5 on medium/large */
+            grid-template-columns: repeat(3, 1fr);
+            gap: 1.5rem; /* Space between cards */
+            
             width: 100%;
             margin: 0 auto;
-            overflow: hidden; /* Keep bubbles inside */
+            padding: 1rem;
+        }
+        @media (min-width: 640px) { /* sm breakpoint (4 columns) */
+            #karutaBoard {
+                grid-template-columns: repeat(4, 1fr);
+            }
+        }
+        @media (min-width: 768px) { /* md breakpoint (5 columns) */
+            #karutaBoard {
+                /* All character levels use 5 columns */
+                grid-template-columns: repeat(5, 1fr);
+            }
+        }
+        /* Custom grid for the challenging Word level (Level 7) */
+        .word-grid {
+             grid-template-columns: repeat(2, 1fr) !important; /* Two wider columns for words */
+             gap: 1rem !important;
+        }
+        @media (min-width: 640px) {
+            .word-grid {
+                grid-template-columns: repeat(3, 1fr) !important;
+            }
         }
 
-        /* --- TILE BASE STYLES: Bubble Look --- */
+
+        /* --- TILE BASE STYLES: Card Look --- */
         .kana-tile {
-            /* Key changes for dynamic positioning */
-            position: absolute;
-            width: 96px; /* Increased size for better visibility */
-            height: 96px; /* Increased size for better visibility */
-            font-size: 3rem; /* Adjusted font size */
+            /* Positioning is handled by Grid, Aspect Ratio maintained by padding */
+            width: 100%; 
+            padding-bottom: 100%; /* Forces a square shape for neat grid alignment */
+            position: relative; 
             
-            /* Circular Shape and Bubble Aesthetics */
-            border-radius: 50%;
+            font-size: 2.25rem; /* BASE SIZE: Adjusted down for better fit on 3-column mobile layout */
+            
+            /* Card Style Aesthetics */
+            border-radius: 0.75rem; /* Soft, rounded corners for card look */
+            background-color: #ffffff; /* Simple white background */
+            border: 1px solid #e5e7eb; /* Subtle border */
+            
             display: flex; 
             align-items: center;
             justify-content: center;
-            box-shadow: 0 5px 15px rgba(0, 0, 0, 0.15), 
-                        inset 0 0 10px rgba(255, 255, 255, 0.7); 
-            background: linear-gradient(145deg, #fefefe, #f0f0f0);
-            border: 1px solid #d1d5db; 
-            transition: all 0.3s cubic-bezier(0.25, 0.8, 0.25, 1);
+            
+            /* Subtle box shadow for lift */
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1), 0 1px 3px rgba(0, 0, 0, 0.08); 
+            transition: all 0.2s ease-out;
+            text-align: center; /* Essential for longer words */
+            line-height: 1.2;
         }
+        
+        /* Responsive font size adjustments to ensure character fits */
+        @media (min-width: 640px) {
+            .kana-tile {
+                font-size: 2.5rem; 
+            }
+        }
+        @media (min-width: 768px) {
+            .kana-tile {
+                font-size: 2.75rem; 
+            }
+        }
+        /* Smaller font size for the Word Levels to fit full words */
+        .word-tile {
+            font-size: 1.5rem !important; 
+            padding-top: 50% !important; /* Make word tiles rectangular */
+            padding-bottom: 50% !important;
+        }
+        @media (min-width: 640px) {
+            .word-tile {
+                font-size: 1.75rem !important;
+            }
+        }
+
+        .kana-tile span {
+            /* Position the character text inside the card, perfectly centered */
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            width: 90%; /* Allow words to wrap */
+            padding: 0.25rem;
+        }
+
 
         /* --- TILE INTERACTION STYLES --- */
         .tile-active {
@@ -48,24 +111,29 @@
             user-select: none;
         }
         .tile-active:hover {
-            /* Lift and scale slightly on hover */
-            transform: translateY(-8px) scale(1.1); /* Slightly more aggressive hover */
-            box-shadow: 0 15px 25px rgba(0, 0, 0, 0.3), inset 0 0 15px rgba(255, 255, 255, 0.9);
+            /* Subtle lift and scale on hover */
+            transform: translateY(-2px) scale(1.02); 
+            box-shadow: 0 8px 12px rgba(0, 0, 0, 0.15); /* Enhanced shadow on hover */
         }
         .tile-active:active {
             /* Push down on click */
-            transform: translateY(0px) scale(0.95);
-            box-shadow: 0 4px 10px rgba(0, 0, 0, 0.1);
+            transform: translateY(0px) scale(0.98);
+            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
         }
 
         /* --- FEEDBACK STYLES --- */
         .tile-correct {
             animation: bounce 0.5s;
-            background-color: #d1fae5; 
+            background-color: #d1fae5; /* Light green background */
             color: #065f46; 
         }
         .tile-incorrect {
             animation: shake 0.5s;
+        }
+        .tile-missed {
+            background-color: #fee2e2; /* Light red background */
+            color: #b91c1c;
+            animation: pulse 0.5s;
         }
 
         /* Keyframe animations */
@@ -79,21 +147,10 @@
             10%, 30%, 50%, 70%, 90% { transform: translateX(-5px); }
             20%, 40%, 60%, 80% { transform: translateX(5px); }
         }
-
-        /* New animation for complex, random-like floating ("bumping") */
-        @keyframes bubble-move {
-            0% { transform: translate(0px, 0px); }
-            20% { transform: translate(15px, -15px); }
-            40% { transform: translate(-10px, 20px); }
-            60% { transform: translate(20px, 5px); }
-            80% { transform: translate(-5px, -15px); }
-            100% { transform: translate(0px, 0px); }
-        }
-        .tile-floating {
-            animation-name: bubble-move;
-            animation-timing-function: ease-in-out;
-            animation-iteration-count: infinite; 
-            /* Duration and Delay are set in JavaScript for randomization */
+        @keyframes pulse {
+            0% { opacity: 1; }
+            50% { opacity: 0.6; }
+            100% { opacity: 1; }
         }
     </style>
 </head>
@@ -103,16 +160,17 @@
         <!-- Game Title and Score -->
         <header class="text-center mb-8">
             <h1 class="text-4xl md:text-5xl font-extrabold text-indigo-700 game-font">
-                Kana Karuta Challenge
+                Kana Karuta Master
             </h1>
-            <p class="mt-2 text-xl text-gray-600">Click the character the Announcer calls out!</p>
-            <div id="scoreDisplay" class="mt-4 text-2xl font-bold text-gray-800">Score: 0</div>
+            <p id="levelDisplay" class="mt-2 text-xl font-semibold text-indigo-600 hidden">Level: 1 - Hiragana L1: Full (23)</p>
+            <div id="scoreDisplay" class="mt-4 text-2xl font-bold text-gray-800 hidden">Score: 0</div>
+            <div id="timerDisplay" class="mt-2 text-3xl font-extrabold text-red-600 hidden">Time: 30</div>
         </header>
-
+        
         <!-- TEACHER PROMPT: Tells the teacher which character to say -->
-        <div id="teacherPromptContainer" class="mb-6 p-4 bg-red-100 rounded-xl border-2 border-red-300 shadow-md text-center">
+        <div id="teacherPromptContainer" class="mb-6 p-4 bg-red-100 rounded-xl border-2 border-red-300 shadow-md text-center hidden">
             <h2 class="text-lg font-bold text-red-800 uppercase tracking-wider">TEACHER PROMPT: SAY THIS ALOUD</h2>
-            <div id="teacherPrompt" class="game-font text-6xl md:text-7xl font-black text-red-900 mt-1">
+            <div id="teacherPrompt" class="game-font text-6xl md:text-7xl font-black text-red-900 mt-1 break-all">
                 ?
             </div>
             <p class="text-sm text-red-600 mt-1">Do not let the students see this part!</p>
@@ -120,7 +178,7 @@
 
 
         <!-- STUDENT VIEW: Main Game Prompt Area -->
-        <div class="mb-8 p-6 bg-indigo-50 rounded-lg border-4 border-indigo-200 shadow-inner text-center">
+        <div id="studentPromptArea" class="mb-8 p-6 bg-indigo-50 rounded-lg border-4 border-indigo-200 shadow-inner text-center hidden">
             <h2 id="studentPromptHeader" class="text-xl font-semibold text-indigo-800">The Announcer Calls...</h2>
             <div id="studentListeningIndicator" class="game-font text-8xl md:text-9xl font-black text-indigo-900 mt-2">
                 🎧
@@ -128,37 +186,64 @@
             <div id="feedbackMessage" class="h-6 mt-2 font-medium"></div>
         </div>
 
-        <!-- Character Grid (Now a dynamic floating area) -->
+        <!-- Character Grid / Welcome Screen Content / Leaderboard Content -->
         <div id="karutaBoard">
-            <!-- Tiles will be injected here by JavaScript -->
+            <!-- Content will be injected here by JavaScript -->
         </div>
 
         <!-- Controls and Game Over Message -->
         <div class="mt-10 text-center">
             <button id="restartButton" class="px-8 py-3 bg-green-500 text-white font-bold rounded-full shadow-lg hover:bg-green-600 transition duration-150 transform hover:scale-105" onclick="setupGame()">
-                Start New Game
+                Start New Game (Level 1)
             </button>
             <div id="gameOverMessage" class="game-font text-3xl font-bold text-red-600 mt-4 hidden">
-                GAME OVER! Excellent Work!
+                LEVEL UP!
             </div>
         </div>
-
-        <!-- Game Mode Toggle (Future Expansion) -->
-        <div class="mt-8 pt-4 border-t text-center text-sm text-gray-500">
-            <p>Currently playing: Hiragana (First 25 Characters)</p>
-        </div>
-
     </div>
 
-    <script>
+    <script type="module">
+        import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
+        import { getAuth, signInAnonymously, signInWithCustomToken } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
+        import { getFirestore, doc, setDoc, collection, query, orderBy, limit, getDocs, setLogLevel } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
+        
+        // --- FIREBASE GLOBALS ---
+        // Global variables (from environment, guaranteed by Canvas)
+        const appId = typeof __app_id !== 'undefined' ? __app_id : 'default-app-id';
+        const firebaseConfig = JSON.parse(typeof __firebase_config !== 'undefined' ? __firebase_config : '{}');
+        const initialAuthToken = typeof __initial_auth_token !== 'undefined' ? __initial_auth_token : null;
+        
+        let app;
+        let db;
+        let auth;
+        let userId = null;
+        let isFirebaseReady = false;
+        
+        // Firestore path for public scores
+        const LEADERBOARD_COLLECTION_PATH = `artifacts/${appId}/public/data/leaderboard`;
+
         // --- GAME DATA ---
-        // Basic Hiragana characters (first 5 rows: A, I, U, E, O and KA, KI, KU, KE, KO ... SA, TA, NA, HA)
-        const kanaSet = [
-            'あ', 'い', 'う', 'え', 'お',
-            'か', 'き', 'く', 'け', 'こ',
-            'さ', 'し', 'す', 'せ', 'そ',
-            'た', 'ち', 'つ', 'て', 'と',
-            'な', 'に', 'ぬ', 'ね', 'の'
+        const LEVELS = [
+            // L1: Full Hiragana (Gojūon) - 23 characters: a-col, k-col, s-col, t-col, n-a/i/u
+            { name: "Hiragana L1: Full (23)", set: ['あ', 'い', 'う', 'え', 'お', 'か', 'き', 'く', 'け', 'こ', 'さ', 'し', 'す', 'せ', 'そ', 'た', 'ち', 'つ', 'て', 'と', 'な', 'に', 'ぬ'] },
+
+            // L2: Full Katakana (Gojūon) - 23 characters: A-col, K-col, S-col, T-col, N-A/I/U
+            { name: "Katakana L2: Full (23)", set: ['ア', 'イ', 'ウ', 'エ', 'オ', 'カ', 'キ', 'ク', 'ケ', 'コ', 'サ', 'シ', 'ス', 'セ', 'ソ', 'タ', 'チ', 'ツ', 'テ', 'ト', 'ナ', 'ニ', 'ヌ'] },
+
+            // L3: Dakuon (濁音) - 20 Hiragana, 20 Katakana (g, z, d, b) 
+            { name: "L3: Dakuon (濁音)", set: ['が', 'ぎ', 'ぐ', 'げ', 'ご', 'ざ', 'じ', 'ず', 'ぜ', 'ぞ', 'だ', 'ぢ', 'づ', 'で', 'ど', 'ば', 'び', 'ぶ', 'べ', 'ぼ', 'ガ', 'ギ', 'グ', 'ゲ', 'ゴ', 'ザ', 'ジ', 'ズ', 'ゼ', 'ゾ', 'ダ', 'ヂ', 'ヅ', 'デ', 'ド', 'バ', 'ビ', 'ブ', 'ベ', 'ボ'] },
+
+            // L4: Handakuon (半濁音) - 5 Hiragana, 5 Katakana (p)
+            { name: "L4: Handakuon (半濁音)", set: ['ぱ', 'ぴ', 'ぷ', 'ぺ', 'ぽ', 'パ', 'ピ', 'プ', 'ペ', 'ポ'] },
+
+            // L5: Yōon (拗音) - Contracted sounds
+            { name: "L5: Yōon (拗音)", set: ['きゃ', 'きゅ', 'きょ', 'しゃ', 'しゅ', 'しょ', 'ちゃ', 'ちゅ', 'ちょ', 'にゃ', 'にゅ', 'にょ', 'ひゃ', 'ひゅ', 'ひょ', 'みゃ', 'みゅ', 'みょ', 'りゃ', 'りゅ', 'りょ', 'ぎゃ', 'ぎゅ', 'ぎょ', 'じゃ', 'じゅ', 'じょ', 'びゃ', 'びゅ', 'びょ', 'ぴゃ', 'ぴゅ', 'ぴょ', 'キャ', 'キュ', 'キョ', 'シャ', 'シュ', 'ショ', 'チャ', 'チュ', 'チョ', 'ニャ', 'ニュ', 'ニョ', 'ヒャ', 'ヒュ', 'ヒョ', 'ミャ', 'ミュ', 'ミョ', 'リャ', 'リュ', 'リョ', 'ギャ', 'ギュ', 'ギョ', 'ジャ', 'ジュ', 'ジョ', 'ビャ', 'ビュ', 'ビョ', 'ピャ', 'ピュ', 'ピョ'] },
+            
+            // L6: Sokuon & Chōon (Small Tsu & Long Vowels)
+            { name: "L6: Sokuon & Chōon", set: ['きって', 'ずっと', 'サッカー', 'コップ', 'おかあさん', 'せんせい', 'ちいさい', 'すうがく', 'ノート', 'ケーキ'] },
+            
+            // L7: Vocabulary Words
+            { name: "L7: Vocabulary Words", set: ['ねこ', 'いぬ', 'さかな', 'おはよう', 'さようなら', 'ありがとう', 'パソコン', 'カメラ', 'テレビ', 'アイスクリーム', 'がっこう', 'せんせい'] }
         ];
 
         // --- GAME STATE ---
@@ -166,22 +251,280 @@
         let targetCharacter = null;
         let availableCharacters = [];
         let gameActive = false;
+        let currentLevelIndex = 0; 
+        let userName = ''; // Player's name for score tracking
         
+        // --- TIMER STATE ---
+        const TIME_LIMIT = 30; // 30 seconds per question
+        let timerInterval = null;
+        let timeLeft = TIME_LIMIT;
+
         // --- DOM Elements ---
         const board = document.getElementById('karutaBoard');
+        const teacherPromptContainer = document.getElementById('teacherPromptContainer');
+        const studentPromptArea = document.getElementById('studentPromptArea');
         const teacherPromptDisplay = document.getElementById('teacherPrompt'); 
         const studentListeningIndicator = document.getElementById('studentListeningIndicator');
         const scoreDisplay = document.getElementById('scoreDisplay');
         const feedbackMessage = document.getElementById('feedbackMessage');
         const restartButton = document.getElementById('restartButton');
         const gameOverMessage = document.getElementById('gameOverMessage');
+        const levelDisplay = document.getElementById('levelDisplay');
+        const timerDisplay = document.getElementById('timerDisplay');
+        
+        // --- FIREBASE INITIALIZATION & DB FUNCTIONS ---
 
-        // --- HELPER FUNCTIONS ---
+        /** Initializes Firebase app and handles user authentication. */
+        async function initFirebase() {
+            try {
+                // setLogLevel('Debug'); // Enable Firestore logging for debugging
+                app = initializeApp(firebaseConfig);
+                db = getFirestore(app);
+                auth = getAuth(app);
 
-        /**
-         * Shuffles an array in place (Fisher-Yates algorithm).
-         * @param {Array} array The array to shuffle.
-         */
+                // Sign in using the custom token or anonymously
+                if (initialAuthToken) {
+                    const userCredential = await signInWithCustomToken(auth, initialAuthToken);
+                    userId = userCredential.user.uid;
+                } else {
+                    const userCredential = await signInAnonymously(auth);
+                    userId = userCredential.user.uid;
+                }
+
+                console.log("Firebase initialized and user signed in:", userId);
+                isFirebaseReady = true;
+
+            } catch (error) {
+                console.error("Error initializing Firebase or signing in:", error);
+            }
+        }
+        
+        /** Saves the user's score to the public leaderboard. */
+        async function saveScore(score) {
+            if (!isFirebaseReady || score === 0 || !userName) return;
+
+            try {
+                // Use a document ID based on the user's unique ID
+                const docRef = doc(db, LEADERBOARD_COLLECTION_PATH, userId);
+                
+                await setDoc(docRef, {
+                    userId: userId,
+                    userName: userName,
+                    score: score,
+                    timestamp: Date.now()
+                }, { merge: true }); // Merge ensures we update the score if user plays again
+
+                console.log(`Score ${score} saved successfully for ${userName}!`);
+            } catch (e) {
+                console.error("Error adding document: ", e);
+            }
+        }
+        
+        /** Fetches and displays the top 10 scores. */
+        async function fetchAndDisplayLeaderboard() {
+            if (!isFirebaseReady) {
+                board.innerHTML = '<div class="text-center p-8 text-red-500">Error: Database not ready.</div>';
+                return;
+            }
+            
+            // Hide game-specific UI
+            hideGameUI();
+            restartButton.textContent = 'Loading...';
+            restartButton.onclick = null;
+
+            try {
+                const q = query(
+                    collection(db, LEADERBOARD_COLLECTION_PATH),
+                    orderBy("score", "desc"), 
+                    orderBy("timestamp", "asc"), // Use timestamp to break score ties (older wins tie)
+                    limit(10)
+                );
+
+                const querySnapshot = await getDocs(q);
+                let leaderboardItems = '';
+                let rank = 1;
+
+                querySnapshot.forEach((doc) => {
+                    const data = doc.data();
+                    const highlightClass = data.userId === userId ? 'bg-indigo-100 font-extrabold border-indigo-500 border-2' : 'bg-white border border-gray-200';
+
+                    leaderboardItems += `
+                        <li class="flex justify-between items-center p-3 rounded-lg shadow-md mb-2 transition ${highlightClass}">
+                            <span class="text-xl w-1/12 text-center text-indigo-700">${rank++}.</span>
+                            <span class="text-lg w-5/12 truncate text-gray-800">${data.userName}</span>
+                            <span class="text-lg w-3/12 text-right font-mono text-green-700">${data.score}</span>
+                            <span class="text-sm w-3/12 text-right text-gray-500">${data.userId === userId ? 'YOU' : ''}</span>
+                        </li>
+                    `;
+                });
+
+                const leaderboardHTML = `
+                    <div id="leaderboardScreen" class="text-center p-4">
+                        <h2 class="text-4xl font-extrabold text-indigo-700 mb-8">🏆 Top Kana Karuta Masters 🏆</h2>
+                        <ul class="w-full max-w-xl mx-auto text-left list-none p-0">
+                            ${leaderboardItems || '<li class="text-center p-4 text-gray-500">No scores posted yet! Be the first.</li>'}
+                        </ul>
+                    </div>
+                `;
+
+                board.style.display = 'block';
+                board.innerHTML = leaderboardHTML;
+                
+                restartButton.textContent = 'Play Again (Change Name)';
+                restartButton.onclick = renderWelcomeScreen;
+
+            } catch (e) {
+                console.error("Error fetching leaderboard: ", e);
+                board.innerHTML = '<div class="text-center p-8 text-red-500">Could not load leaderboard. Check console for error details.</div>';
+                restartButton.textContent = 'Retry Leaderboard';
+                restartButton.onclick = fetchAndDisplayLeaderboard;
+            }
+        }
+
+        // --- UI VISIBILITY & SCREEN FLOW ---
+        
+        /** Hides all game-specific elements. */
+        function hideGameUI() {
+            teacherPromptContainer.classList.add('hidden');
+            studentPromptArea.classList.add('hidden');
+            scoreDisplay.classList.add('hidden');
+            timerDisplay.classList.add('hidden');
+            levelDisplay.classList.add('hidden');
+            gameOverMessage.classList.add('hidden');
+        }
+
+        /** Shows all game-specific elements. */
+        function showGameUI() {
+            teacherPromptContainer.classList.remove('hidden');
+            studentPromptArea.classList.remove('hidden');
+            scoreDisplay.classList.remove('hidden');
+            timerDisplay.classList.remove('hidden');
+            levelDisplay.classList.remove('hidden');
+        }
+
+        /** Renders the initial screen for name entry. */
+        function renderWelcomeScreen() {
+            hideGameUI();
+            
+            const welcomeHTML = `
+                <div id="welcomeScreen" class="text-center p-8">
+                    <h2 class="text-3xl font-bold text-indigo-700 mb-6">Welcome to Kana Karuta Master!</h2>
+                    <p class="text-gray-600 mb-8">Enter your name to start the challenge and track your score.</p>
+                    
+                    <input id="userNameInput" type="text" placeholder="Your Name" value="${userName}" maxlength="20"
+                           class="w-full max-w-sm px-4 py-3 border-2 border-indigo-300 rounded-lg text-center text-xl font-semibold focus:outline-none focus:ring-2 focus:ring-indigo-500 mb-6"/>
+                    
+                    <button id="startButton" class="w-full max-w-sm px-8 py-4 bg-indigo-600 text-white font-bold rounded-full shadow-lg hover:bg-indigo-700 transition duration-150 transform hover:scale-105"
+                            onclick="startGameFlow()">
+                        Start Game!
+                    </button>
+                    <div class="mt-8">
+                        <button class="text-indigo-500 hover:underline font-medium" onclick="fetchAndDisplayLeaderboard()">
+                            View Top Scores
+                        </button>
+                    </div>
+                </div>
+            `;
+            board.innerHTML = '';
+            board.style.display = 'block'; // Use block for the welcome screen
+            board.innerHTML = welcomeHTML;
+            restartButton.classList.add('hidden'); // Hide the main button on the welcome screen
+        }
+
+        /** Validates name and initiates the game setup. */
+        function startGameFlow() {
+            const nameInput = document.getElementById('userNameInput');
+            const enteredName = nameInput ? nameInput.value.trim() : '';
+
+            if (enteredName.length < 2 || enteredName.length > 20) {
+                // Using console.error as per instruction, rather than alert()
+                console.error("Name validation error: Please enter a name between 2 and 20 characters.");
+                // Provide visual feedback instead of an alert
+                nameInput.classList.add('border-red-500', 'ring-red-500');
+                feedbackMessage.textContent = 'Name must be 2-20 characters!';
+                feedbackMessage.className = 'h-6 mt-2 font-medium text-red-600 block';
+                setTimeout(() => {
+                    nameInput.classList.remove('border-red-500', 'ring-red-500');
+                    feedbackMessage.textContent = '';
+                }, 2000);
+                return;
+            }
+
+            userName = enteredName;
+            
+            // Show game elements
+            showGameUI();
+            restartButton.classList.remove('hidden');
+            
+            // Restore board to grid layout
+            board.style.display = 'grid';
+            
+            // Start the game loop at level 0
+            setupGame(0);
+        }
+
+        // --- TIMER FUNCTIONS ---
+        
+        /** Stops the current timer interval. */
+        function stopTimer() {
+            if (timerInterval) {
+                clearInterval(timerInterval);
+                timerInterval = null;
+            }
+        }
+        
+        /** Handles the logic when the timer runs out. */
+        function timeIsUp() {
+            stopTimer();
+            // Find the correct tile to highlight the missed answer
+            const correctTile = Array.from(board.querySelectorAll('.kana-tile')).find(tile => {
+                return tile.querySelector('span').textContent === targetCharacter;
+            });
+
+            if (correctTile) {
+                correctTile.classList.add('tile-missed');
+                correctTile.classList.remove('tile-active');
+                correctTile.onclick = null;
+                gameActive = false; 
+            }
+
+            feedbackMessage.textContent = 'TIME UP! The correct answer was missed.';
+            feedbackMessage.className = 'h-6 mt-2 font-medium text-red-800';
+            studentListeningIndicator.textContent = '⏱️'; 
+
+            // Remove the character from the pool (it was missed)
+            availableCharacters = availableCharacters.filter(char => char !== targetCharacter);
+            targetCharacter = null;
+            
+            setTimeout(() => {
+                if (correctTile) {
+                    correctTile.classList.remove('tile-missed');
+                }
+                gameActive = true;
+                startRound();
+            }, 2000); 
+        }
+
+        /** Starts the 30-second countdown timer. */
+        function startTimer() {
+            stopTimer(); 
+            timeLeft = TIME_LIMIT;
+            timerDisplay.textContent = `Time: ${timeLeft}`;
+            
+            timerInterval = setInterval(() => {
+                timeLeft--;
+                timerDisplay.textContent = `Time: ${timeLeft}`;
+                timerDisplay.classList.toggle('text-red-800', timeLeft <= 5);
+
+                if (timeLeft <= 0) {
+                    timeIsUp();
+                }
+            }, 1000);
+        }
+
+        // --- GAME LOGIC FUNCTIONS ---
+        
+        /** Shuffles an array in place (Fisher-Yates algorithm). */
         function shuffleArray(array) {
             for (let i = array.length - 1; i > 0; i--) {
                 const j = Math.floor(Math.random() * (i + 1));
@@ -189,62 +532,51 @@
             }
         }
 
-        /**
-         * Picks a new target character from the currently available characters
-         * and updates the announcer display for the teacher.
-         */
+        /** Picks a new target character, updates display, and starts the timer. */
         function startRound() {
             if (availableCharacters.length === 0) {
                 endGame();
                 return;
             }
-
-            // Pick a random character from the remaining available set
+            
+            gameActive = true; 
+            stopTimer(); 
+            
             const randomIndex = Math.floor(Math.random() * availableCharacters.length);
             targetCharacter = availableCharacters[randomIndex];
 
-            // Update the display for the TEACHER (the user)
             teacherPromptDisplay.textContent = targetCharacter;
-
-            // Update the display for the STUDENTS
             studentListeningIndicator.textContent = '📣'; 
             feedbackMessage.textContent = 'Listen closely! Find the character I just called.';
             feedbackMessage.className = 'h-6 mt-2 font-medium text-indigo-700';
+            timerDisplay.classList.remove('text-red-800');
 
-            // Ensure the board is ready for clicks
             board.querySelectorAll('.tile-active').forEach(tile => {
                 tile.classList.remove('tile-incorrect');
             });
+            
+            startTimer();
         }
 
-        /**
-         * Handles the player clicking a character tile.
-         * @param {string} clickedChar The character on the clicked tile.
-         * @param {HTMLElement} tileElement The HTML element that was clicked.
-         */
+        /** Handles the player clicking a character tile. */
         function handleTileClick(clickedChar, tileElement) {
             if (!gameActive || !targetCharacter) return;
+            gameActive = false; 
 
             if (clickedChar === targetCharacter) {
                 // CORRECT CLICK!
+                stopTimer();
                 currentScore++;
                 scoreDisplay.textContent = `Score: ${currentScore}`;
                 feedbackMessage.textContent = 'Correct!';
                 feedbackMessage.className = 'h-6 mt-2 font-medium text-green-600';
                 studentListeningIndicator.textContent = '✅'; 
 
-                // Mark the tile as found and remove its floating animation/click handler
-                tileElement.classList.remove('tile-active', 'tile-floating');
+                // Mark the tile as found
+                tileElement.classList.remove('tile-active');
                 tileElement.classList.add('tile-correct', 'opacity-50');
                 tileElement.onclick = null; 
                 
-                // Clear inline styles that managed the floating, which allows the 'bounce' animation to reset the transform
-                tileElement.style.top = '';
-                tileElement.style.left = '';
-                tileElement.style.animationDuration = '';
-                tileElement.style.animationDelay = '';
-
-
                 // Remove the character from the available pool
                 availableCharacters = availableCharacters.filter(char => char !== targetCharacter);
                 targetCharacter = null; 
@@ -263,100 +595,129 @@
                 setTimeout(() => {
                     tileElement.classList.remove('tile-incorrect');
                     studentListeningIndicator.textContent = '📣'; 
+                    gameActive = true; // Re-enable clicks after visual feedback
                 }, 500);
             }
         }
 
-        /**
-         * Renders the initial game board with all character tiles, randomly positioned and animated.
-         */
+        /** Renders the initial game board with all character tiles in a fixed grid. */
         function renderBoard(characters) {
             board.innerHTML = '';
             
-            // Wait for the board to render and get its dimensions
-            setTimeout(() => {
-                const boardRect = board.getBoundingClientRect();
-                const boardWidth = boardRect.width || 600; 
-                const boardHeight = boardRect.height || 450; 
-                const tileSize = 96; // Matches CSS width/height
+            // Adjust board layout for the Vocabulary Words level (new L7, index 6)
+            board.classList.remove('word-grid');
+            if (currentLevelIndex === 6) { // L7: Vocabulary Words (Index 6)
+                board.classList.add('word-grid');
+            }
 
-                characters.forEach(char => {
-                    const tile = document.createElement('div');
-                    
-                    // Calculate random safe position
-                    // Ensure the bubble starts entirely within the viewable area (board dimension - tile size)
-                    const randomTop = Math.random() * (boardHeight - tileSize);
-                    const randomLeft = Math.random() * (boardWidth - tileSize);
-                    
-                    // Randomize animation properties for asynchronous movement
-                    const randomDuration = (Math.random() * 6) + 7; // 7s to 13s
-                    const randomDelay = Math.random() * 3; // 0s to 3s delay
+            characters.forEach(char => {
+                const tile = document.createElement('div');
+                const span = document.createElement('span');
 
-                    // Apply styles and classes
-                    tile.className = 'kana-tile tile-active tile-floating p-4 game-font font-bold text-gray-800';
-                    tile.textContent = char;
-                    tile.onclick = () => handleTileClick(char, tile);
-                    
-                    // Apply absolute positioning and random animation properties
-                    tile.style.top = `${randomTop}px`;
-                    tile.style.left = `${randomLeft}px`;
-                    tile.style.animationDuration = `${randomDuration}s`;
-                    // Use negative delay to start the animation mid-cycle for a non-uniform look
-                    tile.style.animationDelay = `-${randomDelay}s`; 
-                    
-                    board.appendChild(tile);
-                });
-            }, 100); // Small delay to ensure the board dimensions are calculated correctly
+                // Apply classes, including the specific word-tile class for L6 (index 5) and up
+                let tileClass = 'kana-tile tile-active p-4 game-font font-bold text-gray-800';
+                if (currentLevelIndex >= 5) { 
+                    tileClass += ' word-tile';
+                }
+
+                tile.className = tileClass;
+                span.textContent = char;
+                tile.appendChild(span);
+                tile.onclick = () => handleTileClick(char, tile);
+                
+                board.appendChild(tile);
+            });
         }
 
-        /**
-         * Initializes or restarts the game state.
-         */
-        function setupGame() {
+        /** Initializes or restarts the game state from the current level. */
+        function setupGame(levelIndex = currentLevelIndex) {
+            currentLevelIndex = levelIndex;
+            stopTimer(); 
+            
+            const levelData = LEVELS[currentLevelIndex];
+
             // Reset state
             currentScore = 0;
-            availableCharacters = [...kanaSet]; 
+            availableCharacters = [...levelData.set]; 
             gameActive = true;
             targetCharacter = null;
 
             // Update UI elements
             scoreDisplay.textContent = `Score: ${currentScore}`;
+            timerDisplay.textContent = `Time: ${TIME_LIMIT}`;
             gameOverMessage.classList.add('hidden');
-            
+            levelDisplay.textContent = `Level: ${currentLevelIndex + 1} - ${levelData.name}`;
+
             // Initial prompt displays
             studentListeningIndicator.textContent = '🎧';
             teacherPromptDisplay.textContent = 'Press Start Round!';
-            feedbackMessage.textContent = 'Press the button below to start the first round.';
+            feedbackMessage.textContent = `Welcome, ${userName}! Press Start Round to begin.`;
 
             // Shuffle and render the board
             shuffleArray(availableCharacters);
             renderBoard(availableCharacters);
             
-            // Change the button function
+            // Set the button function
             restartButton.textContent = 'Start Round';
             restartButton.onclick = startRound;
         }
 
-        /**
-         * Ends the game and displays the final score.
-         */
-        function endGame() {
+        /** Ends the game and displays the final score or advances the level. */
+        async function endGame() {
             gameActive = false;
-            studentListeningIndicator.textContent = '🏆';
-            teacherPromptDisplay.textContent = 'Game Over!';
-            feedbackMessage.textContent = `You found all ${kanaSet.length} characters!`;
-            gameOverMessage.classList.remove('hidden');
+            stopTimer(); 
             
-            // Change the button back to restart the whole game
-            restartButton.textContent = 'Play Again?';
-            restartButton.onclick = setupGame;
+            const nextLevelIndex = currentLevelIndex + 1;
+            
+            if (nextLevelIndex < LEVELS.length) {
+                // LEVEL UP!
+                currentLevelIndex = nextLevelIndex;
+                const nextLevelData = LEVELS[currentLevelIndex];
+                
+                studentListeningIndicator.textContent = '⬆️';
+                teacherPromptDisplay.textContent = `LEVEL ${nextLevelIndex + 1} UNLOCKED!`;
+                feedbackMessage.textContent = `Level ${currentLevelIndex} complete! Starting ${nextLevelData.name}...`;
+                gameOverMessage.textContent = 'LEVEL UP!';
+                gameOverMessage.classList.remove('hidden');
+                
+                restartButton.textContent = `Starting Level ${nextLevelIndex + 1}...`;
+                restartButton.onclick = null; 
+                
+                setTimeout(() => {
+                    gameOverMessage.classList.add('hidden'); 
+                    setupGame(currentLevelIndex);
+                }, 3000); 
 
-            // Disable remaining tiles
-            board.querySelectorAll('div').forEach(tile => tile.onclick = null);
+            } else {
+                // Game is fully over (All levels complete)
+                studentListeningIndicator.textContent = '👑';
+                teacherPromptDisplay.textContent = 'MASTER!';
+                feedbackMessage.textContent = `CONGRATULATIONS, ${userName}! You mastered all ${LEVELS.length} levels with a score of ${currentScore}!`;
+                gameOverMessage.classList.remove('hidden');
+                gameOverMessage.textContent = 'GAME MASTER! ALL LEVELS COMPLETE!';
+                
+                // Save final score
+                await saveScore(currentScore); 
+
+                // Change the button to view leaderboard
+                restartButton.textContent = 'View Leaderboard';
+                restartButton.onclick = fetchAndDisplayLeaderboard;
+
+                // Disable remaining tiles for visual clarity
+                board.querySelectorAll('div').forEach(tile => tile.onclick = null);
+            }
         }
 
+        // Expose core flow functions to the global scope for inline HTML event handlers
+        window.setupGame = setupGame;
+        window.startGameFlow = startGameFlow;
+        window.fetchAndDisplayLeaderboard = fetchAndDisplayLeaderboard;
+
         // --- INITIALIZATION ---
-        window.onload = setupGame;
+        window.onload = async () => {
+            await initFirebase();
+            renderWelcomeScreen();
+        };
     </script>
 </body>
 </html>
